@@ -1,0 +1,19 @@
+# Build output
+/bin/
+/tmp/
+*.exe
+
+# Local env overrides (see .env.example)
+.env
+
+# Generated OpenAPI spec (see "Generate the OpenAPI spec" in README.md)
+/docs/
+
+# Test/coverage artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+
+# OS cruft
+.DS_Store
