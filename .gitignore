@@ -1,0 +1,14 @@
+# Dependencies
+node_modules
+
+# Cypress run artifacts (see "Artifacts on failure" in README.md)
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS cruft
+.DS_Store

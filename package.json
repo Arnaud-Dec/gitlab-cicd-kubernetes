@@ -1,0 +1,15 @@
+{
+  "name": "todo-app-cypress",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser-driven E2E tests for the Todo app frontend, using Cypress.",
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test": "wait-on \"${CYPRESS_BASE_URL:-http://localhost:5173}\" && cypress run"
+  },
+  "devDependencies": {
+    "cypress": "^16.0.0",
+    "wait-on": "^9.1.0"
+  }
+}
