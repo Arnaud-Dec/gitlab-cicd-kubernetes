@@ -1,0 +1,9 @@
+.git
+bin/
+tmp/
+.env
+docs/
+*.test
+*.out
+coverage.out
+coverage.html
