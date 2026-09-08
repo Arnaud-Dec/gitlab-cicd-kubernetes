@@ -24,8 +24,8 @@ import (
 // test binary. This test therefore also covers /version and the CORS-off
 // default (see version_test.go for the equivalent on NewHealthServer, which
 // doesn't have this constraint, and cors_internal_test.go for coverage of
-// the CORS-on case, which tests the extracted middleware directly instead of
-// going through another server.New call).
+// the CORS-on case and the wildcard CORS-off case, which test the extracted
+// middleware directly instead of going through another server.New call).
 func TestNew_SetsHostnameHeaderAndServesVersion(t *testing.T) {
 	wantHostname, err := os.Hostname()
 	require.NoError(t, err)
@@ -48,15 +48,15 @@ func TestNew_SetsHostnameHeaderAndServesVersion(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"version":"2026-01-02T03:04"}`, rec.Body.String())
 
-	// With CORS disabled, a cross-origin request gets no CORS headers at all
-	// — the browser will block the frontend from reading the response. Using
-	// /healthz here (rather than /api/todos) since it doesn't touch the nil
-	// *gorm.DB this test passes to server.New.
+	// With CORS "disabled" (the default), any origin is still allowed via a
+	// wildcard — see the doc comment on server.New. Using /healthz here
+	// (rather than /api/todos) since it doesn't touch the nil *gorm.DB this
+	// test passes to server.New.
 	req = httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/healthz", nil)
 	req.Header.Set(echo.HeaderOrigin, "http://localhost:5173")
 	rec = httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
-	assert.Empty(t, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
 }
 
 func TestNewHealthServer_SetsHostnameHeader(t *testing.T) {

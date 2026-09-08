@@ -4,7 +4,8 @@ package server
 // corsMiddleware helper directly — this avoids a second server.New call in
 // this test binary, which would panic on duplicate Prometheus collector
 // registration (see the comment on TestNew_SetsHostnameHeaderAndServesVersion
-// in hostname_test.go). The CORS-disabled default is covered there instead.
+// in hostname_test.go). The wildcard CORS-disabled default is covered there
+// instead.
 
 import (
 	"net/http"
@@ -17,7 +18,7 @@ import (
 
 func TestCORSMiddleware_AllowsConfiguredOriginAndExposesHostnameHeader(t *testing.T) {
 	e := echo.New()
-	e.Use(corsMiddleware("http://localhost:5173"))
+	e.Use(corsMiddleware("http://localhost:5173", true))
 	e.GET("/api/todos", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
@@ -31,9 +32,26 @@ func TestCORSMiddleware_AllowsConfiguredOriginAndExposesHostnameHeader(t *testin
 	assert.Equal(t, HostnameHeader, rec.Header().Get(echo.HeaderAccessControlExposeHeaders))
 }
 
-func TestCORSMiddleware_RejectsOtherOrigins(t *testing.T) {
+func TestCORSMiddleware_AllowsEachOriginInACommaSeparatedList(t *testing.T) {
 	e := echo.New()
-	e.Use(corsMiddleware("http://localhost:5173"))
+	e.Use(corsMiddleware("http://localhost:5173, http://localhost:4000", true))
+	e.GET("/api/todos", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	for _, origin := range []string{"http://localhost:5173", "http://localhost:4000"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/todos", nil)
+		req.Header.Set(echo.HeaderOrigin, origin)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		assert.Equal(t, origin, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	}
+}
+
+func TestCORSMiddleware_RejectsOtherOriginsWhenEnabled(t *testing.T) {
+	e := echo.New()
+	e.Use(corsMiddleware("http://localhost:5173", true))
 	e.GET("/api/todos", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
@@ -44,4 +62,22 @@ func TestCORSMiddleware_RejectsOtherOrigins(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Empty(t, rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+}
+
+func TestCORSMiddleware_AllowsAnyOriginWhenDisabled(t *testing.T) {
+	e := echo.New()
+	// frontendOrigin is ignored when corsEnabled is false — the middleware
+	// falls back to a wildcard regardless of its value.
+	e.Use(corsMiddleware("http://localhost:5173", false))
+	e.GET("/api/todos", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/todos", nil)
+	req.Header.Set(echo.HeaderOrigin, "http://anything.example.com")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, "*", rec.Header().Get(echo.HeaderAccessControlAllowOrigin))
+	assert.Equal(t, HostnameHeader, rec.Header().Get(echo.HeaderAccessControlExposeHeaders))
 }

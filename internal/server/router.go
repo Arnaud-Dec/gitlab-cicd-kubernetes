@@ -2,6 +2,7 @@ package server
 
 import (
 	"log"
+	"strings"
 
 	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
@@ -17,10 +18,16 @@ import (
 // only port exposed to the frontend — HEALTH_PORT stays unexposed, reserved
 // for cluster-internal use (Kubernetes probes, metrics).
 //
-// corsEnabled toggles CORS support (CORS_ENABLED, default false — see
-// config.Config). It's off by default so the API is only reachable
-// same-origin unless a deployment deliberately opts in; local dev, where the
-// frontend (:5173) and backend (:8080) are different origins, needs it on.
+// CORS headers are always sent. corsEnabled (CORS_ENABLED, default false —
+// see config.Config) picks which policy: false (the default) allows any
+// origin (Access-Control-Allow-Origin: *), a permissive default so local dev
+// and ad hoc testing work regardless of what port the frontend happens to
+// run on; true restricts it to frontendOrigin instead, for deployments that
+// want to lock the API down to a known set of origins.
+//
+// frontendOrigin accepts a comma-separated list (e.g. when the frontend dev
+// server needs to run on more than one port at once), see splitOrigins. It's
+// only consulted when corsEnabled is true.
 func New(db *gorm.DB, frontendOrigin string, corsEnabled bool) *echo.Echo {
 	e := echo.New()
 	e.Validator = NewValidator()
@@ -41,9 +48,7 @@ func New(db *gorm.DB, frontendOrigin string, corsEnabled bool) *echo.Echo {
 		},
 	}))
 	e.Use(middleware.Recover())
-	if corsEnabled {
-		e.Use(corsMiddleware(frontendOrigin))
-	}
+	e.Use(corsMiddleware(frontendOrigin, corsEnabled))
 	e.Use(hostnameMiddleware())
 	// Collects request count/duration/size metrics (echo_requests_total,
 	// echo_request_duration_seconds, ...) into the default Prometheus
@@ -69,9 +74,13 @@ func New(db *gorm.DB, frontendOrigin string, corsEnabled bool) *echo.Echo {
 	return e
 }
 
-func corsMiddleware(frontendOrigin string) echo.MiddlewareFunc {
+func corsMiddleware(frontendOrigin string, corsEnabled bool) echo.MiddlewareFunc {
+	origins := []string{"*"}
+	if corsEnabled {
+		origins = splitOrigins(frontendOrigin)
+	}
 	return middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{frontendOrigin},
+		AllowOrigins: origins,
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders: []string{"Content-Type"},
 		// Custom response headers are invisible to cross-origin JS unless
@@ -79,4 +88,18 @@ func corsMiddleware(frontendOrigin string) echo.MiddlewareFunc {
 		// fine in curl/devtools' network tab but never reach axios.
 		ExposeHeaders: []string{HostnameHeader},
 	})
+}
+
+// splitOrigins turns a comma-separated FRONTEND_ORIGIN value into the list
+// AllowOrigins expects, trimming whitespace and dropping empty entries. A
+// single origin (the common case) just comes back as a one-element slice.
+func splitOrigins(frontendOrigin string) []string {
+	parts := strings.Split(frontendOrigin, ",")
+	origins := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			origins = append(origins, p)
+		}
+	}
+	return origins
 }

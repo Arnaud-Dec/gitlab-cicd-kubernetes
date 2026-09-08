@@ -79,10 +79,11 @@ Listens on `HTTP_PORT` (default `8080`) and `HEALTH_PORT` (default `9090`). Poll
 `e2e/` or `cypress/` sub-projects) at it — it retries its own DB connection internally, but a CI
 pipeline should still wait rather than assume it's immediately ready.
 
-If that later stage is a **browser** hitting the API from a different origin (e.g. a served
-frontend build, or the Cypress suite) rather than a plain HTTP client (e.g. the Go `e2e/` suite),
-set `CORS_ENABLED=true` — see below. It's off by default, so a browser client gets blocked with no
-extra step needed to get that default.
+A **browser** hitting the API from a different origin (e.g. a served frontend build, or the
+Cypress suite) works with no configuration needed — `CORS_ENABLED` defaults to `false`, which
+allows any origin. Set it to `true` (and `FRONTEND_ORIGIN`) instead if the pipeline needs to lock
+the API down to a specific origin — see below. None of this matters to a plain HTTP client (e.g.
+the Go `e2e/` suite), which is never subject to CORS in the first place.
 
 ## Environment variables
 
@@ -96,8 +97,8 @@ extra step needed to get that default.
 | `DB_SSLMODE` | `disable` | |
 | `HTTP_PORT` | `8080` | Main API port — the only one meant to be exposed outside the pipeline/cluster |
 | `HEALTH_PORT` | `9090` | `/healthz`, `/readyz`, `/metrics` — keep this unexposed in a real deployment |
-| `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS allow-origin on `HTTP_PORT` — only used if `CORS_ENABLED` is true |
-| `CORS_ENABLED` | `false` | Whether the API sends CORS headers at all — disabled means same-origin only, no `Access-Control-*` headers sent, and a cross-origin browser client is blocked by the browser itself even though the API is reachable |
+| `FRONTEND_ORIGIN` | `http://localhost:5173` | CORS allow-origin(s) on `HTTP_PORT` — only used if `CORS_ENABLED` is true; comma-separated for more than one |
+| `CORS_ENABLED` | `false` | Whether the API restricts CORS to `FRONTEND_ORIGIN` (`true`) or allows any origin (`false`, the default) |
 | `TEST_DATABASE_DSN` | unset | Test-only — see "Test" above; when unset, tests use in-memory SQLite instead |
 
 None of these need to be set for `build`, `vet`, `lint`, or the default `test` — they only matter
