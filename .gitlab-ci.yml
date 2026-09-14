@@ -1,14 +1,6 @@
 build-image:
   stage: build
-  image: docker:29
-  services:
-    - docker:cli
-  variables:
-    # Connexion TLS au daemon du service dind (config recommandée par GitLab)
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: "/certs"
-    DOCKER_TLS_VERIFY: "1"
-    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  image: docker:cli
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - IMAGE="$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
