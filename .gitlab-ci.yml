@@ -1,74 +1,18 @@
-# Build de l'image du backend et push sur la Container Registry GitLab du projet.
-#
-# Pas de Docker-in-Docker : on utilise Podman, qui n'a pas de daemon et n'a donc
-# besoin ni d'un service `dind`, ni d'un runner en mode privileged.
-
-stages:
-  - check
-  - build
-
-default:
-  image: quay.io/podman/stable
-
-variables:
-  # vfs : le job tourne déjà dans un conteneur dont le rootfs est un overlayfs,
-  # et overlayfs ne s'empile pas sur overlayfs. vfs copie les couches en dur :
-  # plus lent et plus gourmand en disque, mais sans aucun privilège.
-  STORAGE_DRIVER: vfs
-  # chroot : l'isolation par défaut (oci) crée des namespaces, ce qu'un conteneur
-  # non privilégié n'a pas forcément le droit de faire. chroot exécute les RUN du
-  # Dockerfile dans un simple chroot -> ni /dev/fuse ni CAP_SYS_ADMIN requis.
-  BUILDAH_ISOLATION: chroot
-  # métadonnées d'image au format Docker v2s2 plutôt qu'OCI : compat maximale
-  BUILDAH_FORMAT: docker
-  # sans ça, `podman login` écrit dans $XDG_RUNTIME_DIR, qui n'existe pas toujours
-  # dans un job -> le login semble réussir mais le push part en "unauthorized".
-  REGISTRY_AUTH_FILE: $CI_PROJECT_DIR/.podman-auth.json
-
-workflow:
-  rules:
-    # évite le pipeline en double (un pour la branche + un pour la MR)
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-      when: never
-    - if: $CI_COMMIT_BRANCH
-    - if: $CI_COMMIT_TAG
-
-# Jetable : sert à découvrir la config du runner (executor, privilèges, registry).
-# À supprimer dès que `build-image` passe.
-runner-diagnostic:
-  stage: check
-  allow_failure: true
-  script:
-    - id; uname -a
-    - echo "CI_REGISTRY=[$CI_REGISTRY] CI_REGISTRY_IMAGE=[$CI_REGISTRY_IMAGE]"
-    - cat /proc/self/uid_map
-    - ls -l /dev/fuse || echo "pas de /dev/fuse (sans importance en chroot+vfs)"
-    - podman version
-    - podman info || true
-
 build-image:
   stage: build
+  image: docker:29
+  services:
+    - docker:29-dind
+  variables:
+    # Connexion TLS au daemon du service dind (config recommandée par GitLab)
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   script:
-    - podman login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    - |
-      # :<short-sha> toujours, :latest seulement sur la branche par défaut,
-      # :<tag-git> seulement sur un pipeline de tag.
-      TAGS="-t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        TAGS="$TAGS -t $CI_REGISTRY_IMAGE:latest"
-      fi
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        TAGS="$TAGS -t $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
-      fi
-      echo "tags: $TAGS"
-      # Pas de --build-arg VERSION : le Dockerfile calcule lui-même le stamp de
-      # version dans son RUN go build (-ldflags -X ...Version=$(date ...)).
-      podman build --isolation chroot --storage-driver vfs $TAGS .
-    - podman push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-    - |
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        podman push "$CI_REGISTRY_IMAGE:latest"
-      fi
-      if [ -n "$CI_COMMIT_TAG" ]; then
-        podman push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
-      fi
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - IMAGE="$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - docker build -t "$IMAGE" .
+    - docker push "$IMAGE"
+    - if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then docker tag "$IMAGE" "$CI_REGISTRY_IMAGE:latest" && docker push "$CI_REGISTRY_IMAGE:latest"; fi
+    - if [ -n "$CI_COMMIT_TAG" ]; then docker tag "$IMAGE" "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" && docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"; fi
