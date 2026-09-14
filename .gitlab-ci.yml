@@ -1,6 +1,18 @@
+stages:
+  - test
+  - build
+
+# Les checks sont définis dans le Dockerfile : même commande en local et en CI
+default:
+  image: docker:cli
+
+test:
+  stage: test
+  script:
+    - docker build --target test .
+
 build-image:
   stage: build
-  image: docker:cli
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - IMAGE="$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
