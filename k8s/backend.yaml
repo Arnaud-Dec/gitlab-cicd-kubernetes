@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+      - name: gitlab-registry
+      containers:
+      - name: backend
+        image: registry.granux.fr/decourt-demaria/tp/backend:latest
+        ports:
+          - name: http
+            containerPort: 8080
+          - name: health
+            containerPort: 9090
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+    ports:
+      - name: http
+        port: 8080
+      - name: health
+        port: 9090
