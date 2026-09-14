@@ -1,6 +1,35 @@
+stages:
+  - lint
+  - test
+  - build
+
+# Les checks sont définis dans le Dockerfile : même commande en local et en CI
+default:
+  image: docker:cli
+
+lint:
+  stage: lint
+  script:
+    - docker build --target lint .
+
+test:
+  stage: test
+  script:
+    - docker build --target test .
+
+test-postgres:
+  stage: test
+  variables:
+    # Nom unique : le daemon Docker est partagé avec les autres jobs du runner
+    COMPOSE_PROJECT_NAME: backend-test-$CI_JOB_ID
+  script:
+    - docker compose -f compose.test.yml run --rm test
+  after_script:
+    # Même si le job échoue ou est annulé : ne pas laisser de Postgres sur le runner
+    - docker compose -f compose.test.yml down -v --rmi local
+
 build-image:
   stage: build
-  image: docker:cli
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - IMAGE="$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
