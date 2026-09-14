@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swagger
+spec:
+  selector:
+    matchLabels:
+      app: swagger
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: swagger
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry
+      containers:
+        - name: swagger
+          image: registry.granux.fr/decourt-demaria/tp/backend/swagger:latest
+          ports:
+            - containerPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: swagger
+spec:
+  selector:
+    app: swagger
+  ports:
+    - port: 8080
+
