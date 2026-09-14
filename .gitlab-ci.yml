@@ -10,14 +10,13 @@ default:
 lint:
   stage: lint
   script:
-    - docker build --target lint .
+    # cacheonly : lance les vérifications sans fabriquer d'image (inutile, et ~2 min sur le runner)
+    - docker build --target lint --output type=cacheonly .
 
+# Un seul job pour les deux bases : construire la cible `test` lance la suite sur
+# SQLite (RUN go test), puis compose relance la même suite contre Postgres.
+# SQLite, très long à compiler sur le runner, n'est ainsi compilé qu'une fois.
 test:
-  stage: test
-  script:
-    - docker build --target test .
-
-test-postgres:
   stage: test
   variables:
     # Nom unique : le daemon Docker est partagé avec les autres jobs du runner
@@ -28,14 +27,28 @@ test-postgres:
     # Même si le job échoue ou est annulé : ne pas laisser de Postgres sur le runner
     - docker compose -f compose.test.yml down -v --rmi local
 
-build-image:
+# Construit une cible du Dockerfile et la pousse sur la registry.
+# Chaque job précise TARGET (étape du Dockerfile) et IMAGE_REPO (dépôt d'image).
+.build-and-push:
   stage: build
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    - IMAGE="$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - IMAGE="$IMAGE_REPO:$CI_COMMIT_SHORT_SHA"
     # --provenance=false : depuis Docker 29.7, l'attestation peut être poussée avant
     # l'image qu'elle référence, ce que la registry GitLab refuse ("blob unknown to registry").
-    - docker build --provenance=false -t "$IMAGE" .
+    - docker build --provenance=false --target "$TARGET" -t "$IMAGE" .
     - docker push "$IMAGE"
-    - if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then docker tag "$IMAGE" "$CI_REGISTRY_IMAGE:latest" && docker push "$CI_REGISTRY_IMAGE:latest"; fi
-    - if [ -n "$CI_COMMIT_TAG" ]; then docker tag "$IMAGE" "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG" && docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"; fi
+    - if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then docker tag "$IMAGE" "$IMAGE_REPO:latest" && docker push "$IMAGE_REPO:latest"; fi
+    - if [ -n "$CI_COMMIT_TAG" ]; then docker tag "$IMAGE" "$IMAGE_REPO:$CI_COMMIT_TAG" && docker push "$IMAGE_REPO:$CI_COMMIT_TAG"; fi
+
+build-image:
+  extends: .build-and-push
+  variables:
+    TARGET: api
+    IMAGE_REPO: $CI_REGISTRY_IMAGE
+
+build-swagger-image:
+  extends: .build-and-push
+  variables:
+    TARGET: swagger
+    IMAGE_REPO: $CI_REGISTRY_IMAGE/swagger
