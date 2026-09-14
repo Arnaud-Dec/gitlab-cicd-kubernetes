@@ -2,7 +2,7 @@ build-image:
   stage: build
   image: docker:29
   services:
-    - docker:29-dind
+    - docker:cli
   variables:
     # Connexion TLS au daemon du service dind (config recommandée par GitLab)
     DOCKER_HOST: tcp://docker:2376
