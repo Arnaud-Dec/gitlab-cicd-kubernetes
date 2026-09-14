@@ -52,3 +52,17 @@ services:
       interval: 2s
       timeout: 5s
       retries: 5
+
+  # Documentation de l'API (Swagger UI), construite depuis la cible `swagger` du Dockerfile backend
+  swagger:
+    build:
+      context: ../backend
+      target: swagger
+    ports:
+      - "8081:8080"
+    healthcheck:
+      # 127.0.0.1 et pas localhost : localhost résout en IPv6 (::1), où ce nginx n'écoute pas
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
