@@ -18,6 +18,7 @@ deploy:
     name: $RELEASE
     url: https://$HOST_PREFIX-frontend.k8s.granux.fr
     on_stop: cleanup
+    auto_stop_in: 1 day
   script:
     - >
       helm install "$RELEASE" helm/                                       
@@ -27,13 +28,14 @@ deploy:
       --set frontend.imageTag=$FRONTEND_TAG
       --set backend.imageTag=$BACKEND_TAG
       --wait --timeout 5m
-      
+  after_script:
+    - if [ "$CI_JOB_STATUS" = "failed" ]; then helm uninstall "$RELEASE" --ignore-not-found; fi
 
 cleanup:
   stage: cleanup
   environment:
     name: $RELEASE
     action: stop
-  when: always
+  when: manual
   script:
     - helm uninstall "$RELEASE" --wait --timeout 5m --ignore-not-found
