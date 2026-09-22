@@ -41,13 +41,15 @@ spec:
             httpGet:
               path: /readyz
               port: health
+            initialDelaySeconds: 15
+            periodSeconds: 5
           livenessProbe:
             # /healthz teste seulement que le process répond : s'il échoue, le pod est redémarré
             httpGet:
               path: /healthz
               port: health
-            # Au démarrage, l'API attend la base (jusqu'à ~20 s) avant d'ouvrir le port 9090
-            initialDelaySeconds: 30
+            initialDelaySeconds: 15
+            periodSeconds: 5
 ---
 kind: Service
 apiVersion: v1
