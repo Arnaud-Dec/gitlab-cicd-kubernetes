@@ -2,6 +2,7 @@ stages:
   - lint
   - test
   - build
+  - deploy
 
 # Les checks sont définis dans le Dockerfile : même commande en local et en CI
 default:
@@ -52,3 +53,12 @@ build-swagger-image:
   variables:
     TARGET: swagger
     IMAGE_REPO: $CI_REGISTRY_IMAGE/swagger
+
+deploy:
+  stage: deploy
+  variables:
+    BACKEND_TAG: $CI_COMMIT_SHORT_SHA
+  trigger:
+    project: decourt-demaria/tp/ci-cd
+    branch: main
+    strategy: depend
