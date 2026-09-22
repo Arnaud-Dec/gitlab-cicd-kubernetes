@@ -1,5 +1,6 @@
 stages:
   - deploy
+  - cleanup
 
 variables:
   RELEASE: ci-$CI_PIPELINE_ID
@@ -13,8 +14,10 @@ image:
 
 deploy:
   stage: deploy
-
-
+  environment:
+    name: $RELEASE
+    url: https://$HOST_PREFIX-frontend.k8s.granux.fr
+    on_stop: cleanup
   script:
     - >
       helm install "$RELEASE" helm/                                       
@@ -24,3 +27,13 @@ deploy:
       --set frontend.imageTag=$FRONTEND_TAG
       --set backend.imageTag=$BACKEND_TAG
       --wait --timeout 5m
+      
+
+cleanup:
+  stage: cleanup
+  environment:
+    name: $RELEASE
+    action: stop
+  when: always
+  script:
+    - helm uninstall "$RELEASE" --wait --timeout 5m --ignore-not-found
