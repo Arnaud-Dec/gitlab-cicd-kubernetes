@@ -1,0 +1,51 @@
+# Hosts au format imposé par le cours : <group>-*.k8s.granux.fr (uniques sur tout le cluster)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{.Release.Name}}-frontend-ingress
+spec:
+  rules:
+    - host: {{.Values.host.frontend}}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Release.Name}}-frontend
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{.Release.Name}}-backend-ingress
+spec:
+  rules:
+    - host: {{.Values.host.backend}}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Release.Name}}-backend-service
+                port:
+                  number: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{.Release.Name}}-swagger-ingress
+spec:
+  rules:
+    - host: {{.Values.host.swagger}}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{.Release.Name}}-swagger
+                port:
+                  number: 8080

@@ -1,0 +1,18 @@
+frontend:
+  replicas: 1
+  image: registry.granux.fr/decourt-demaria/tp/frontend
+  imageTag: latest
+
+backend:
+  replicas: 1
+  image: registry.granux.fr/decourt-demaria/tp/backend
+  imageTag: latest
+
+swagger:
+  replicas: 1
+  image: registry.granux.fr/decourt-demaria/tp/backend/swagger
+
+host:
+  frontend: decourt-demaria-frontend.k8s.granux.fr
+  backend: decourt-demaria-backend.k8s.granux.fr
+  swagger: decourt-demaria-swagger.k8s.granux.fr

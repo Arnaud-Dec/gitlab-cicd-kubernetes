@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Release.Name}}-backend
+spec:
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}-backend
+  replicas: {{.Values.backend.replicas}}
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}-backend
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry
+      containers:
+        - name: backend
+          image: {{.Values.backend.image}}:{{.Values.backend.imageTag}}
+          env:
+            - name: DB_HOST
+              value: {{.Release.Name}}-pg # nom du Service défini dans pg.yaml
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: todos
+            - name: DB_SSLMODE
+              value: disable
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: health
+              containerPort: 9090
+          # Probes appelées par le kubelet directement sur le pod : pas besoin d'exposer 9090 dans le Service
+          readinessProbe:
+            # /readyz teste la base : tant qu'il échoue, le Service n'envoie pas de trafic au pod
+            httpGet:
+              path: /readyz
+              port: health
+          livenessProbe:
+            # /healthz teste seulement que le process répond : s'il échoue, le pod est redémarré
+            httpGet:
+              path: /healthz
+              port: health
+            # Au démarrage, l'API attend la base (jusqu'à ~20 s) avant d'ouvrir le port 9090
+            initialDelaySeconds: 30
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{.Release.Name}}-backend-service
+spec:
+  selector:
+    app: {{.Release.Name}}-backend
+  ports:
+    - name: http
+      port: 8080

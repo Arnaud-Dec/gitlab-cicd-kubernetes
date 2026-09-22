@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Release.Name}}-swagger
+spec:
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}-swagger
+  replicas: {{.Values.swagger.replicas}}
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}-swagger
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry
+      containers:
+        - name: swagger
+          image: {{.Values.swagger.image}}:{{.Values.backend.imageTag}}
+          ports:
+            - containerPort: 8080
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{.Release.Name}}-swagger
+spec:
+  selector:
+    app: {{.Release.Name}}-swagger
+  ports:
+    - port: 8080

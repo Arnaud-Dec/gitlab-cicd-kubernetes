@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Release.Name}}-pg
+spec:
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}-pg
+  # Pas de value : PostgreSQL ne se réplique pas en ajoutant des pods
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}-pg
+    spec:
+      containers:
+        - name: pg
+          image: postgres:16
+          # Doivent correspondre aux DB_* de backend.yaml (utilisateur par défaut : postgres)
+          env:
+            - name: POSTGRES_PASSWORD # obligatoire : sans lui, le conteneur refuse de démarrer
+              value: postgres
+            - name: POSTGRES_DB
+              value: todos
+          ports:
+            - containerPort: 5432
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{.Release.Name}}-pg
+spec:
+  selector:
+    app: {{.Release.Name}}-pg
+  ports:
+    - protocol: TCP
+      port: 5432
