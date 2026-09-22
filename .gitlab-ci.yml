@@ -6,5 +6,6 @@ image:
   entrypoint: [""]
 
 deploy:
+  stage: deploy
   script:
     - helm list
