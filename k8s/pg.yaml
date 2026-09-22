@@ -23,6 +23,16 @@ spec:
               value: todos
           ports:
             - containerPort: 5432
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
 ---
 kind: Service
 apiVersion: v1
