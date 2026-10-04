@@ -15,7 +15,7 @@ spec:
     todos: todo                  # base "todos", dont "todo" est propriétaire
   resources:                     # même rôle que pour tes Deployments
     requests:
-      cpu: 50m
+      cpu: 100m
       memory: 100Mi
     limits:
       cpu: 500m

@@ -22,8 +22,7 @@ spec:
           resources:
             requests:
               memory: 100Mi     # imposé par le sujet
-              # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
-              cpu: 50m
+              cpu: 100m
             limits:
               memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
               cpu: 500m         # plus haut que la request, pour absorber le démarrage

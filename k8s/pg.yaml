@@ -19,8 +19,7 @@ spec:
   resources:
     requests:
       memory: 100Mi
-      # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
-      cpu: 50m
+      cpu: 100m
     limits:
       memory: 500Mi
       cpu: 500m
