@@ -39,6 +39,14 @@ spec:
             containerPort: 8080
           - name: health
             containerPort: 9090
+        resources:
+          requests:
+            memory: 100Mi
+            # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
+            cpu: 50m
+          limits:
+            memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
+            cpu: 500m         # plus haut que la request, pour absorber le démarrage
         # Probes appelées par le kubelet directement sur le pod : pas besoin d'exposer 9090 dans le Service
         readinessProbe:
           # /readyz teste la base : tant qu'il échoue, le Service n'envoie pas de trafic au pod
