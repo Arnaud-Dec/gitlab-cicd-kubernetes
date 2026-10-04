@@ -1,0 +1,57 @@
+# Ancienne base de données, déployée à la main avec un Deployment et un volume éphémère.
+# Conservée pour mémoire : elle est remplacée par pg.yaml, qui passe par l'opérateur Zalando.
+# Ne pas appliquer en même temps que pg.yaml : les deux créent un Service pour la base.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pg
+spec:
+  selector:
+    matchLabels:
+      app: pg
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: pg
+    spec:
+      containers:
+        - name: pg
+          image: postgres:16
+          # Doivent correspondre aux DB_* de backend.yaml (utilisateur par défaut : postgres)
+          env:
+            - name: POSTGRES_PASSWORD # obligatoire : sans lui, le conteneur refuse de démarrer
+              value: postgres
+            - name: POSTGRES_DB
+              value: todos
+          ports:
+            - containerPort: 5432
+          resources:
+            requests:
+              memory: 100Mi
+              # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
+              cpu: 50m
+            limits:
+              memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
+              cpu: 500m         # plus haut que la request, pour absorber le démarrage
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: pg
+spec:
+  selector:
+    app: pg
+  ports:
+    - protocol: TCP
+      port: 5432
