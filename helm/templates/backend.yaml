@@ -39,7 +39,8 @@ spec:
             - name: DB_NAME
               value: todos
             - name: DB_SSLMODE
-              value: enable
+              # require : l'image de l'opérateur refuse les connexions non chiffrées
+              value: require
           ports:
             - name: http
               containerPort: 8080
