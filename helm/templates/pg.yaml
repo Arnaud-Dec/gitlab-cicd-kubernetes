@@ -1,55 +1,22 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: acid.zalan.do/v1
+kind: postgresql
 metadata:
-  name: {{.Release.Name}}-pg
+  name: {{.Release.Name}}-pg     # convention : <teamId>-<suffixe>
 spec:
-  selector:
-    matchLabels:
-      app: {{.Release.Name}}-pg
-  # Pas de value : PostgreSQL ne se réplique pas en ajoutant des pods
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: {{.Release.Name}}-pg
-    spec:
-      containers:
-        - name: pg
-          image: postgres:16
-          # Doivent correspondre aux DB_* de backend.yaml (utilisateur par défaut : postgres)
-          env:
-            - name: POSTGRES_PASSWORD # obligatoire : sans lui, le conteneur refuse de démarrer
-              value: postgres
-            - name: POSTGRES_DB
-              value: todos
-          ports:
-            - containerPort: 5432
-          resources:
-            requests:
-              memory: 100Mi     # imposé par le sujet
-              # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
-              cpu: 50m
-            limits:
-              memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
-              cpu: 500m         # plus haut que la request, pour absorber le démarrage
-          livenessProbe:
-            exec:
-              command: ["pg_isready", "-U", "postgres"]
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "postgres"]
-            initialDelaySeconds: 5
-            periodSeconds: 5
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: {{.Release.Name}}-pg
-spec:
-  selector:
-    app: {{.Release.Name}}-pg
-  ports:
-    - protocol: TCP
-      port: 5432
+  teamId: {{.Release.Name}}      # le nom ci-dessus doit commencer par ce teamId
+  numberOfInstances: 1
+  postgresql:
+    version: "15"                # entre guillemets : c'est une chaîne
+  volume:
+    size: 1Gi                    # crée le PVC, donc la persistance
+  users:
+    todo: []                     # un utilisateur "todo" sans droits spéciaux
+  databases:
+    todos: todo                  # base "todos", dont "todo" est propriétaire
+  resources:                     # même rôle que pour tes Deployments
+    requests:
+      cpu: 50m
+      memory: 100Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi

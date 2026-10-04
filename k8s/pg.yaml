@@ -1,55 +1,26 @@
-apiVersion: apps/v1
-kind: Deployment
+# Base de données gérée par l'opérateur Zalando : il crée lui-même le StatefulSet,
+# le volume, les Services et un Secret par utilisateur.
+# Version 15 : la CRD installée sur le cluster n'accepte pas la 16.
+apiVersion: acid.zalan.do/v1
+kind: postgresql
 metadata:
-  name: pg
+  name: todo-pg                  # doit commencer par le teamId ci-dessous
 spec:
-  selector:
-    matchLabels:
-      app: pg
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: pg
-    spec:
-      containers:
-        - name: pg
-          image: postgres:16
-          # Doivent correspondre aux DB_* de backend.yaml (utilisateur par défaut : postgres)
-          env:
-            - name: POSTGRES_PASSWORD # obligatoire : sans lui, le conteneur refuse de démarrer
-              value: postgres
-            - name: POSTGRES_DB
-              value: todos
-          ports:
-            - containerPort: 5432
-          resources:
-            requests:
-              memory: 100Mi
-              # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
-              cpu: 50m
-            limits:
-              memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
-              cpu: 500m         # plus haut que la request, pour absorber le démarrage
-          livenessProbe:
-            exec:
-              command: ["pg_isready", "-U", "postgres"]
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          readinessProbe:
-            exec:
-              command: ["pg_isready", "-U", "postgres"]
-            initialDelaySeconds: 5
-            periodSeconds: 5
----
-kind: Service
-apiVersion: v1
-metadata:
-  name: pg
-spec:
-  selector:
-    app: pg
-  ports:
-    - protocol: TCP
-      port: 5432
-
+  teamId: todo
+  numberOfInstances: 1
+  postgresql:
+    version: "15"
+  volume:
+    size: 1Gi                    # crée le PVC, donc la persistance
+  users:
+    todo: []                     # utilisateur sans droits particuliers
+  databases:
+    todos: todo                  # base todos, dont todo est propriétaire
+  resources:
+    requests:
+      memory: 100Mi
+      # Le sujet demande 100m, mais les nodes n'ont plus de CPU réservable : les pods restaient Pending
+      cpu: 50m
+    limits:
+      memory: 500Mi
+      cpu: 500m

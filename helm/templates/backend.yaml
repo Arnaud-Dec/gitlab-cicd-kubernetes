@@ -27,13 +27,19 @@ spec:
             - name: DB_PORT
               value: "5432"
             - name: DB_USER
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: todo.{{.Release.Name}}-pg.credentials.postgresql.acid.zalan.do
+                  key: username
             - name: DB_PASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: todo.{{.Release.Name}}-pg.credentials.postgresql.acid.zalan.do
+                  key: password
             - name: DB_NAME
               value: todos
             - name: DB_SSLMODE
-              value: disable
+              value: enable
           ports:
             - name: http
               containerPort: 8080

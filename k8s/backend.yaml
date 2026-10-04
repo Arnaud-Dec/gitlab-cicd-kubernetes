@@ -23,17 +23,25 @@ spec:
         image: registry.granux.fr/decourt-demaria/tp/backend:latest
         env:
           - name: DB_HOST
-            value: pg # nom du Service défini dans pg.yaml
+            value: todo-pg # nom de la ressource postgresql de pg.yaml : l'opérateur crée un Service du même nom
           - name: DB_PORT
             value: "5432"
+          # Identifiants générés par l'opérateur, jamais écrits dans le dépôt
           - name: DB_USER
-            value: postgres
+            valueFrom:
+              secretKeyRef:
+                name: todo.todo-pg.credentials.postgresql.acid.zalan.do
+                key: username
           - name: DB_PASSWORD
-            value: postgres
+            valueFrom:
+              secretKeyRef:
+                name: todo.todo-pg.credentials.postgresql.acid.zalan.do
+                key: password
           - name: DB_NAME
             value: todos
           - name: DB_SSLMODE
-            value: disable
+            # require : l'image de l'opérateur refuse les connexions non chiffrées
+            value: require
         ports:
           - name: http
             containerPort: 8080
