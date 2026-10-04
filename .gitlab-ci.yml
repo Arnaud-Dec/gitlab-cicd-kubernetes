@@ -3,8 +3,10 @@ stages:
   - cleanup
 
 variables:
-  RELEASE: ci-$CI_PIPELINE_ID
-  HOST_PREFIX: decourt-demaria-ci-$CI_PIPELINE_ID
+  # IID et non ID : CI_PIPELINE_ID n'existe qu'au lancement du job, il serait vide
+  # dans environment.name, que GitLab résout à la création du pipeline
+  RELEASE: ci-$CI_PIPELINE_IID
+  HOST_PREFIX: decourt-demaria-ci-$CI_PIPELINE_IID
   BACKEND_TAG: latest
   FRONTEND_TAG: latest
 
