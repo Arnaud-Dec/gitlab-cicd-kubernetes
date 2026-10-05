@@ -221,6 +221,68 @@ déploiement : si le déploiement casse, le pipeline du backend est rouge.
 3. **Secret `gitlab-registry`** dans les deux namespaces (voir plus haut), avec un deploy token
    par namespace.
 
+## Observabilité
+
+Le backend expose ses métriques au format Prometheus sur son **port de santé** (`9090/metrics`),
+à côté de `/healthz` et `/readyz`. Ce port n'est volontairement pas exposé par le Service ni par
+l'Ingress : Prometheus et les probes interrogent le pod directement.
+
+La collecte repose sur les **annotations** du pod backend, seul mécanisme disponible ici (la
+création de `ServiceMonitor` est interdite aux comptes étudiants) :
+
+```yaml
+annotations:
+  prometheus.io/scrape: 'true'
+  prometheus.io/path: '/metrics'
+  prometheus.io/port: '9090'
+```
+
+Pour **vérifier que Prometheus scrape réellement** le pod, lire deux fois son compteur de scrapes à
+30 secondes d'intervalle : s'il augmente de plus de 1, quelqu'un d'autre que vous est passé.
+
+```bash
+kubectl exec deploy/app-backend -- sh -c \
+  'wget -qO- 127.0.0.1:9090/metrics | grep promhttp_metric_handler_requests_total'
+```
+
+Métriques disponibles : `echo_requests_total{code,method,url,host}`,
+`echo_request_duration_seconds` (histogramme, donc centiles calculables), `echo_request_size_bytes`,
+`echo_response_size_bytes`, et les métriques métier de l'application `todoapp_todos_open`,
+`todoapp_todos_closed`, `todoapp_todos_created_total`.
+
+### Dashboard Grafana
+
+Grafana : <https://grafana-decourt-demaria.k8s.granux.fr> (authentification GitLab).
+
+Le dashboard est versionné dans **`grafana/dashboard.json`** (format `dashboard.grafana.app/v2`).
+Import : Dashboards → New → Import → *Upload dashboard JSON file*. Le `uid` étant conservé,
+Grafana propose d'écraser le dashboard existant plutôt que d'en créer un doublon. Export après
+modification dans l'interface : Export → *Export as JSON* → *Save to file*, en laissant l'option
+« utiliser sur une autre instance » désactivée.
+
+Panels : nombre d'erreurs 500, temps de réponse (moyenne et 95e centile), débit par code de réponse
+HTTP, métriques métier, et consommation CPU et mémoire du backend comparée à ses `requests` et
+`limits` (seuils tracés en pointillés : 100m et 500m pour le CPU, 100Mi pour la mémoire).
+
+Ces deux derniers panels utilisent les métriques `process_*` exposées par le client Prometheus du
+backend, et **pas la charge moyenne du système** (`loadavg`) : dans un conteneur, celle-ci reflète
+la charge du nœud entier, donc le travail des autres groupes qui partagent le cluster. Elle ne dit
+rien de l'application et on ne peut pas agir dessus. Le CPU du processus comparé à la réservation
+est en revanche directement actionnable : au-dessus de la `limit`, le conteneur est throttlé ;
+au-dessus de la `limit` mémoire, il est tué et redémarré.
+
+Deux partis pris dans les requêtes :
+
+- elles filtrent sur `host="decourt-demaria-backend.k8s.granux.fr"`, car Prometheus scrape aussi les
+  **environnements éphémères** créés par la CD : sans ce filtre, un pipeline en cours fait doubler
+  les courbes et une erreur dans un environnement de test polluerait le suivi de l'application ;
+- les fenêtres sont de 5 minutes et non d'une minute : avec un scrape toutes les ~20 s, une fenêtre
+  d'une minute ne contient que trois points et le panel affiche « No data » dès qu'il n'y a pas de
+  trafic.
+
+Le panel des erreurs 500 utilise `or vector(0)` pour afficher un zéro explicite plutôt que
+« No data » : l'API ne renvoie 500 que si la base de données est injoignable.
+
 ## Choix et écarts assumés
 
 - **`requests` = 100m CPU / 100Mi de mémoire** sur tous les conteneurs, et `limits` à 100Mi de
