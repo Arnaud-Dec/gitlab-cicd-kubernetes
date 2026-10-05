@@ -5,7 +5,7 @@ metadata:
   name: {{.Release.Name}}-frontend-ingress
 spec:
   rules:
-    - host: {{.Values.host.frontend}}
+    - host: "{{.Values.host.frontend}}"
       http:
         paths:
           - path: /
@@ -22,7 +22,7 @@ metadata:
   name: {{.Release.Name}}-backend-ingress
 spec:
   rules:
-    - host: {{.Values.host.backend}}
+    - host: "{{.Values.host.backend}}"
       http:
         paths:
           - path: /
@@ -39,7 +39,7 @@ metadata:
   name: {{.Release.Name}}-swagger-ingress
 spec:
   rules:
-    - host: {{.Values.host.swagger}}
+    - host: "{{.Values.host.swagger}}"
       http:
         paths:
           - path: /

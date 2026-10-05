@@ -20,7 +20,7 @@ spec:
         - name: gitlab-registry
       containers:
         - name: backend
-          image: {{.Values.backend.image}}:{{.Values.backend.imageTag}}
+          image: "{{.Values.backend.image}}:{{.Values.backend.imageTag}}"
           env:
             - name: DB_HOST
               value: {{.Release.Name}}-pg # nom du Service défini dans pg.yaml

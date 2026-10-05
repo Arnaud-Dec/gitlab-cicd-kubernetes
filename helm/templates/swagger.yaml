@@ -16,7 +16,7 @@ spec:
         - name: gitlab-registry
       containers:
         - name: swagger
-          image: {{.Values.swagger.image}}:{{.Values.backend.imageTag}}
+          image: "{{.Values.swagger.image}}:{{.Values.backend.imageTag}}"
           ports:
             - containerPort: 8080
           resources:
