@@ -1,0 +1,8 @@
+# Build/test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+
+# OS cruft
+.DS_Store
