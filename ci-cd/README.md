@@ -1,8 +1,7 @@
 # CI/CD — déploiement de la Todo App
 
 Ce dépôt ne contient pas de code applicatif : il décrit **comment déployer** l'application Todo
-(dépôts [`backend`](https://git.granux.fr/decourt-demaria/tp/backend) et
-[`frontend`](https://git.granux.fr/decourt-demaria/tp/frontend)), en local avec Docker Compose et
+([`backend`](../backend) et [`frontend`](../frontend)), en local avec Docker Compose et
 sur Kubernetes avec Helm, ainsi que le **pipeline de CD** qui crée et supprime un environnement de
 test éphémère dans le cluster.
 
@@ -44,8 +43,7 @@ kubectl get pods
 docker compose up --build
 ```
 
-Les images sont construites depuis les dépôts voisins (`../backend`, `../frontend`), qui doivent
-donc être clonés à côté de celui-ci. Les services démarrent dans l'ordre grâce aux `healthcheck`
+Les images sont construites depuis les dossiers voisins `../backend` et `../frontend`. Les services démarrent dans l'ordre grâce aux `healthcheck`
 et aux `depends_on: condition: service_healthy`.
 
 | Service | URL | Remarque |

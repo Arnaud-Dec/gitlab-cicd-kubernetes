@@ -99,6 +99,6 @@ required: since Docker 29.7 the attestation can reach the registry before the im
 which GitLab rejects with `blob unknown to registry`.
 
 The `deploy` job is a `trigger` job: it starts the pipeline of the
-[`ci-cd`](https://git.granux.fr/decourt-demaria/tp/ci-cd) project with
+[`ci-cd`](../ci-cd) project with
 `FRONTEND_TAG: $CI_COMMIT_SHORT_SHA`, so the CD deploys the image this pipeline just built, and
 `strategy: depend` makes this job red if the deployment fails.
