@@ -1,0 +1,43 @@
+stages:
+  - deploy
+  - cleanup
+
+variables:
+  # IID et non ID : CI_PIPELINE_ID n'existe qu'au lancement du job, il serait vide
+  # dans environment.name, que GitLab résout à la création du pipeline
+  RELEASE: ci-$CI_PIPELINE_IID
+  HOST_PREFIX: decourt-demaria-ci-$CI_PIPELINE_IID
+  BACKEND_TAG: latest
+  FRONTEND_TAG: latest
+
+image:
+  name: alpine/helm:4.3.0
+  entrypoint: [""]
+
+deploy:
+  stage: deploy
+  environment:
+    name: $RELEASE
+    url: https://$HOST_PREFIX-frontend.k8s.granux.fr
+    on_stop: cleanup
+    auto_stop_in: 1 day
+  script:
+    - >
+      helm install "$RELEASE" helm/                                       
+      --set host.frontend=$HOST_PREFIX-frontend.k8s.granux.fr             
+      --set host.backend=$HOST_PREFIX-backend.k8s.granux.fr
+      --set host.swagger=$HOST_PREFIX-swagger.k8s.granux.fr
+      --set frontend.imageTag=$FRONTEND_TAG
+      --set backend.imageTag=$BACKEND_TAG
+      --wait --timeout 5m
+  after_script:
+    - if [ "$CI_JOB_STATUS" = "failed" ]; then helm uninstall "$RELEASE" --ignore-not-found; fi
+
+cleanup:
+  stage: cleanup
+  environment:
+    name: $RELEASE
+    action: stop
+  when: manual
+  script:
+    - helm uninstall "$RELEASE" --wait --timeout 5m --ignore-not-found

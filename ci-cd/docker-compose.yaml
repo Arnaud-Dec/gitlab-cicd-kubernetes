@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todos
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d todos"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ../backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: todos
+      DB_SSLMODE: disable
+      HTTP_PORT: "8080"
+      HEALTH_PORT: "9090"
+      CORS_ENABLED: "false"
+      FRONTEND_ORIGIN: "http://localhost:5173"
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/readyz"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ../frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  # Documentation de l'API (Swagger UI), construite depuis la cible `swagger` du Dockerfile backend
+  swagger:
+    build:
+      context: ../backend
+      target: swagger
+    ports:
+      - "8081:8080"
+    healthcheck:
+      # 127.0.0.1 et pas localhost : localhost résout en IPv6 (::1), où ce nginx n'écoute pas
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 2s
+      timeout: 5s
+      retries: 5

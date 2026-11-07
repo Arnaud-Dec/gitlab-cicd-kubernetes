@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Release.Name}}-swagger
+spec:
+  selector:
+    matchLabels:
+      app: {{.Release.Name}}-swagger
+  replicas: {{.Values.swagger.replicas}}
+  template:
+    metadata:
+      labels:
+        app: {{.Release.Name}}-swagger
+    spec:
+      imagePullSecrets:
+        - name: gitlab-registry
+      containers:
+        - name: swagger
+          image: "{{.Values.swagger.image}}:{{.Values.backend.imageTag}}"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: 100Mi     # imposé par le sujet
+              cpu: 100m
+            limits:
+              memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
+              cpu: 500m         # plus haut que la request, pour absorber le démarrage
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 3
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{.Release.Name}}-swagger
+spec:
+  selector:
+    app: {{.Release.Name}}-swagger
+  ports:
+    - port: 8080

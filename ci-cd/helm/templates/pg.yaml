@@ -1,0 +1,22 @@
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: {{.Release.Name}}-pg     # convention : <teamId>-<suffixe>
+spec:
+  teamId: {{.Release.Name}}      # le nom ci-dessus doit commencer par ce teamId
+  numberOfInstances: 1
+  postgresql:
+    version: "15"                # entre guillemets : c'est une chaîne
+  volume:
+    size: 1Gi                    # crée le PVC, donc la persistance
+  users:
+    todo: []                     # un utilisateur "todo" sans droits spéciaux
+  databases:
+    todos: todo                  # base "todos", dont "todo" est propriétaire
+  resources:                     # même rôle que pour tes Deployments
+    requests:
+      cpu: 100m
+      memory: 100Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi

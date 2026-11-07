@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '9090'
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+      - name: gitlab-registry
+      containers:
+      - name: backend
+        image: registry.granux.fr/decourt-demaria/tp/backend:latest
+        env:
+          - name: DB_HOST
+            value: todo-pg # nom de la ressource postgresql de pg.yaml : l'opérateur crée un Service du même nom
+          - name: DB_PORT
+            value: "5432"
+          # Identifiants générés par l'opérateur, jamais écrits dans le dépôt
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: todo.todo-pg.credentials.postgresql.acid.zalan.do
+                key: username
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: todo.todo-pg.credentials.postgresql.acid.zalan.do
+                key: password
+          - name: DB_NAME
+            value: todos
+          - name: DB_SSLMODE
+            # require : l'image de l'opérateur refuse les connexions non chiffrées
+            value: require
+        ports:
+          - name: http
+            containerPort: 8080
+          - name: health
+            containerPort: 9090
+        resources:
+          requests:
+            memory: 100Mi
+            cpu: 100m
+          limits:
+            memory: 100Mi     # = request : le cours le conseille, la mémoire se partage mal
+            cpu: 500m         # plus haut que la request, pour absorber le démarrage
+        # Probes appelées par le kubelet directement sur le pod : pas besoin d'exposer 9090 dans le Service
+        readinessProbe:
+          # /readyz teste la base : tant qu'il échoue, le Service n'envoie pas de trafic au pod
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 5
+        livenessProbe:
+          # /healthz teste seulement que le process répond : s'il échoue, le pod est redémarré
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 5
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: http
+      port: 8080

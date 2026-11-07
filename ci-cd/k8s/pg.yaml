@@ -1,0 +1,25 @@
+# Base de données gérée par l'opérateur Zalando : il crée lui-même le StatefulSet,
+# le volume, les Services et un Secret par utilisateur.
+# Version 15 : la CRD installée sur le cluster n'accepte pas la 16.
+apiVersion: acid.zalan.do/v1
+kind: postgresql
+metadata:
+  name: todo-pg                  # doit commencer par le teamId ci-dessous
+spec:
+  teamId: todo
+  numberOfInstances: 1
+  postgresql:
+    version: "15"
+  volume:
+    size: 1Gi                    # crée le PVC, donc la persistance
+  users:
+    todo: []                     # utilisateur sans droits particuliers
+  databases:
+    todos: todo                  # base todos, dont todo est propriétaire
+  resources:
+    requests:
+      memory: 100Mi
+      cpu: 100m
+    limits:
+      memory: 500Mi
+      cpu: 500m
